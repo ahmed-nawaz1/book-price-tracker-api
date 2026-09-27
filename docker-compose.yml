@@ -1,0 +1,27 @@
+services:
+  db:
+    image: postgres:16
+    container_name: book_tracker_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+      POSTGRES_DB: book_tracker
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  app:
+    build: .
+    container_name: book_tracker_api
+    restart: always
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres123@db:5432/book_tracker
+    ports:
+      - "8000:8000"
+
+volumes:
+  postgres_data:
