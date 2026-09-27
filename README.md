@@ -25,7 +25,7 @@ book-price-tracker/
 ├── requirements.txt
 ├── Dockerfile
 ├── docker-compose.yml
-├── .env
+├── .env.example
 └── README.md
 
 ## Setup & Run
@@ -40,15 +40,21 @@ book-price-tracker/
    git clone https://github.com/ahmed-nawaz1/book-price-tracker-api.git
    cd book-price-tracker
 
-2. Run the project with Docker Compose (this starts both the FastAPI app and PostgreSQL database together)
+2. Copy the example environment file
+
+   cp .env.example .env
+
+   (Default values already work with Docker Compose — no changes needed for local use.)
+
+3. Run the project with Docker Compose (this starts both the FastAPI app and PostgreSQL database together)
 
    docker compose up --build
 
-3. The API will be available at:
+4. The API will be available at:
 
    http://localhost:8000
 
-4. Interactive API documentation (Swagger UI):
+5. Interactive API documentation (Swagger UI):
 
    http://localhost:8000/docs
 
@@ -114,7 +120,7 @@ A unique constraint on (title, category) prevents duplicate entries when the scr
 |----------|-------------|
 | DATABASE_URL | PostgreSQL connection string |
 
-These are configured automatically in docker-compose.yml for the Dockerized setup.
+Copy `.env.example` to `.env` before running. Default values are pre-configured to work with the Docker Compose setup.
 
 ## Notes
 
