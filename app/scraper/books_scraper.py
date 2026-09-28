@@ -9,14 +9,14 @@ BASE_URL = "https://books.toscrape.com/"
 RATING_MAP = {"One": 1, "Two": 2, "Three": 3, "Four": 4, "Five": 5}
 
 
-def get_all_book_links():
-    """Iterate through all catalogue pages and collect links to all books."""
+def get_all_book_links(http: requests.Session, limit: int = None):
+    """Iterate through catalogue pages and collect book links, stopping early at limit."""
     links = []
     page_url = BASE_URL + "catalogue/page-1.html"
 
     while page_url:
         try:
-            resp = requests.get(page_url, timeout=10)
+            resp = http.get(page_url, timeout=10)
             if resp.status_code != 200:
                 break
         except requests.RequestException as e:
@@ -29,6 +29,11 @@ def get_all_book_links():
         for b in books:
             href = b["href"].replace("../../../", "")
             links.append(BASE_URL + "catalogue/" + href)
+
+        print(f"Collected {len(links)} links so far")
+
+        if limit and len(links) >= limit:
+            break
 
         next_btn = soup.select_one("li.next a")
 
@@ -45,10 +50,10 @@ def get_all_book_links():
     return links
 
 
-def scrape_book_detail(url: str):
+def scrape_book_detail(url: str, http: requests.Session):
     """Extract book details from a single book detail page."""
     try:
-        resp = requests.get(url, timeout=10)
+        resp = http.get(url, timeout=10)
 
         if resp.status_code != 200:
             return None
@@ -88,22 +93,22 @@ def scrape_book_detail(url: str):
 
 
 def run_scraper(db: Session, limit: int = None):
-    """Sab books scrape karke DB mein save karta hai (duplicates skip karke)."""
-    print("🔍 Fetching book links...")
-    links = get_all_book_links()
-    print(f"✅ Found {len(links)} total book links")
+    print("Fetching book links...")
+    http = requests.Session()
+    links = get_all_book_links(http, limit)
+    print(f"Found {len(links)} total book links")
 
     if limit:
         links = links[:limit]
-        print(f"⚡ Limiting to {limit} books for this run")
+        print(f"Limiting to {limit} books for this run")
 
     added, skipped, failed = 0, 0, 0
 
     for i, link in enumerate(links, start=1):
         print(f"[{i}/{len(links)}] Scraping: {link}")
-        data = scrape_book_detail(link)
+        data = scrape_book_detail(link, http)
         if not data:
-            print(f"   ❌ Failed to scrape this book")
+            print(f"Failed to scrape this book")
             failed += 1
             continue
 
@@ -113,7 +118,7 @@ def run_scraper(db: Session, limit: int = None):
         ).first()
 
         if exists:
-            print(f"   ⏭️  Skipped (already exists): {data['title']}")
+            print(f"   Skipped (already exists): {data['title']}")
             skipped += 1
             continue
 
@@ -121,12 +126,12 @@ def run_scraper(db: Session, limit: int = None):
         db.add(book)
         try:
             db.commit()
-            print(f"   ✅ Added: {data['title']} - £{data['price']}")
+            print(f"   Added: {data['title']} - £{data['price']}")
             added += 1
         except IntegrityError:
             db.rollback()
-            print(f"   ⏭️  Skipped (duplicate): {data['title']}")
+            print(f"   Skipped (duplicate): {data['title']}")
             skipped += 1
 
-    print(f"\n🎉 Done! Total: {len(links)}, Added: {added}, Skipped: {skipped}, Failed: {failed}")
+    print(f"\nDone! Total: {len(links)}, Added: {added}, Skipped: {skipped}, Failed: {failed}")
     return {"total_found": len(links), "added": added, "skipped": skipped, "failed": failed}
